@@ -1,26 +1,49 @@
 name: Build
+
 on:
   push:
-    branches: [ "**" ]
+    branches: ["**"]
   pull_request:
+  
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    # Only run on PRs if the source branch is on someone else's repo
+    # 仅在 PR 来自其他仓库时运行，保留原项目逻辑
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        java: [ 17 ]
+        java: [17]
       fail-fast: true
+
     steps:
-      - uses: actions/checkout@v3
-      - name: JDK ${{ matrix.java }}
-        uses: actions/setup-java@v3.6.0
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ matrix.java }}
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Build
-        run: ./gradlew build
+        run: ./gradlew --no-daemon build
+
+      - name: Upload JAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AxiomFolia-JAR
+          path: |
+            build/libs/*.jar
+            **/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
